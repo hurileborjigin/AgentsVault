@@ -1,126 +1,170 @@
-# AgentVault
+# Agent Vault
 
-Terminal-first AI chat CLI built with TypeScript and Azure OpenAI.
+CLI-first retrieval system for project knowledge.  
+Ingest local documents, ask grounded questions, and keep auditable markdown conversation logs.
+
+## Why Agent Vault
+
+- Retrieval-first workflow for coding agents and developer tooling.
+- Monorepo architecture with clean ports-and-adapters boundaries.
+- Local SQLite vector store (no Supabase dependency required).
+- OpenAI and Azure OpenAI support.
+- Deterministic CLI output with explicit failure exit codes.
 
 ## Features
 
-- Interactive chat session in the terminal (`agentvault chat`)
-- Conversation resume with keyboard navigation
-- Conversation cleanup with interactive checkbox multi-select (`agentvault clear`)
-- Model-friendly JSON conversation storage in `answers/`
-- Backward-compatible resume support for legacy Markdown chat files
+- `configure`: interactive provider and model setup.
+- `ingest`: recursive file discovery, parsing, chunking, embedding, persistence.
+- `ask`: one-shot grounded answer with citations and markdown export.
+- `status`: configuration + index health summary.
+- `doctor`: environment and storage diagnostics.
+- Local conversation exports to `.conversations/YYYY-MM-DD/*.md`.
 
 ## Requirements
 
-- Node.js 18+
-- An Azure OpenAI resource with at least one deployed model
+- Node.js `24+`
+- `pnpm` `10+`
+- OpenAI or Azure OpenAI credentials
 
-## Installation
+## Quick Start
 
-```sh
-npm install
-npx tsc
-npm link
+```bash
+pnpm install
+pnpm build
 ```
 
-After linking, the CLI command is available as:
+Run from source:
 
-```sh
-agentvault --help
+```bash
+node apps/cli/dist/index.js --help
 ```
 
-## Configuration
+Link globally:
 
-Create a `.env` file in the project root:
-
-```dotenv
-AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com
-AZURE_OPENAI_API_KEY=<your-api-key>
-AZURE_OPENAI_API_VERSION=2024-12-01-preview
-AZURE_OPENAI_DEPLOYMENT_NAME=<your-deployment-name>
+```bash
+cd apps/cli
+pnpm link --global
+agent-vault --help
 ```
 
-Notes:
+## Command Reference
 
-- `AZURE_OPENAI_DEPLOYMENT_NAME` must match your Azure deployment name, not just a base model family name.
-- Some newer models may require preview API versions.
+Top-level help:
 
-## Usage
-
-### Start chat
-
-```sh
-agentvault chat
+```bash
+agent-vault --help
 ```
 
-Inside chat:
+Configure provider and model:
 
-- Type a message and press Enter
-- Type `stop`, `exit`, or `quit` to end the session
-- Type `/resume` to append a previous conversation into current context
-
-### Resume flow (`/resume`)
-
-- Interactive mode (TTY): use `Up/Down`, `Enter`, `Esc`/`q`
-- Fallback mode (non-TTY): select by number
-
-### Clear saved histories
-
-```sh
-agentvault clear
+```bash
+agent-vault configure
 ```
 
-- Interactive mode (TTY): use `Up/Down`, `Space` to toggle, `Enter` to delete
-- Fallback mode (non-TTY): enter comma-separated indexes
+Ingest project documents:
 
-## Conversation Storage
-
-Saved under `answers/` as `*-chat.json`.
-
-Example:
-
-```json
-{
-  "version": 1,
-  "format": "agentvault-chat",
-  "createdAt": "2026-03-11T12:34:56.789Z",
-  "messages": [
-    { "role": "system", "content": "You are a helpful assistant..." },
-    { "role": "user", "content": "Hello" },
-    { "role": "assistant", "content": "Hi! How can I help?" }
-  ]
-}
+```bash
+agent-vault ingest --source ./docs --project my-project
+agent-vault ingest --source ./docs --project my-project --reindex
 ```
 
-Legacy Markdown files (`*-chat.md`) are still readable via `/resume`.
+Ask grounded questions:
 
-Backward compatibility: the `thinker` command is still exposed as an alias.
+```bash
+agent-vault ask "How does configuration work?" --project my-project
+agent-vault ask "What is the architecture?" --project my-project --top-k 6
+```
+
+Health/status:
+
+```bash
+agent-vault status --project my-project
+agent-vault doctor
+```
+
+## Configuration and Secrets
+
+Agent Vault uses two files in `~/.agent-vault/`:
+
+- `agent-vault.json`: non-secret config (provider, models, output directory, db path, default project).
+- `auth.json`: encrypted credentials.
+- `auth.key`: local encryption key used to decrypt `auth.json`.
+
+Behavior:
+
+- `agent-vault configure` updates provider/model config and can capture credentials interactively.
+- At runtime, credentials are loaded into process environment from the encrypted auth vault.
+- You can still provide credentials through shell environment variables if preferred.
+
+## Supported Inputs
+
+Ingestion supports:
+
+- `txt`
+- `md`
+- `pdf`
+- `png`, `jpg`, `jpeg`, `webp` (stub image/OCR flow in v1)
+
+## Project Structure
+
+```text
+apps/cli            # CLI entrypoint and command handlers
+packages/core       # domain entities, ports, application services
+packages/ingestion  # discovery/parsing/chunking pipeline
+packages/retrieval  # context reduction and answer prompt assembly
+packages/storage    # sqlite vector store + local config/auth/export repos
+packages/providers  # OpenAI/Azure providers + OCR/vision stubs
+packages/shared     # schemas, errors, utilities
+```
 
 ## Development
 
-```sh
-npx tsc
-npx tsc -w
-node dist/index.js --help
+Workspace scripts:
+
+```bash
+pnpm build
+pnpm typecheck
+pnpm test
+pnpm lint
 ```
 
-Main entrypoint:
+CLI package only:
 
-- `src/index.ts`
+```bash
+pnpm --filter @agent-vault/cli build
+pnpm --filter @agent-vault/cli test
+```
+
+## Troubleshooting
+
+- Run `agent-vault doctor` first for environment/config/storage checks.
+- If commands fail globally, relink:
+
+```bash
+cd apps/cli
+pnpm link --global
+```
+
+- If provider calls fail, rerun `agent-vault configure` and re-enter credentials.
 
 ## Roadmap
 
-- Runtime model switching command (for example `/model`)
-- Better command-level help and validation
-- Optional import/export utilities for conversations
+- Replace image/OCR stubs with production adapters.
+- Expand retrieval/ranking controls.
+- Add broader fixture-based integration coverage.
 
 ## Contributing
 
-1. Fork the repo
-2. Create a feature branch
-3. Make changes with focused commits
-4. Open a pull request with a clear summary and test notes
+Contributions are welcome.  
+Before opening a PR, run:
+
+```bash
+pnpm typecheck
+pnpm test
+pnpm lint
+```
 
 ## License
 
-ISC
+No license file is currently present in this repository.  
+Add a `LICENSE` file before public distribution.

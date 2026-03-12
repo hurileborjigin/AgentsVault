@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@agent-vault/shared": ["packages/shared/src"],
+      "@agent-vault/core": ["packages/core/src"],
+      "@agent-vault/ingestion": ["packages/ingestion/src"],
+      "@agent-vault/retrieval": ["packages/retrieval/src"],
+      "@agent-vault/storage": ["packages/storage/src"],
+      "@agent-vault/providers": ["packages/providers/src"]
+    }
+  }
+}

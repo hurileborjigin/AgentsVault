@@ -1,0 +1,57 @@
+{
+  "name": "@agent-vault/cli",
+  "version": "1.0.0",
+  "description": "CLI-first retrieval system for coding agents",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-vault/agent-vault.git",
+    "directory": "apps/cli"
+  },
+  "keywords": [
+    "cli",
+    "rag",
+    "retrieval",
+    "vector-search",
+    "coding-agents",
+    "embeddings"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "bin": {
+    "agent-vault": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsc -b -w",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-vault/core": "workspace:*",
+    "@agent-vault/ingestion": "workspace:*",
+    "@agent-vault/providers": "workspace:*",
+    "@agent-vault/retrieval": "workspace:*",
+    "@agent-vault/shared": "workspace:*",
+    "@agent-vault/storage": "workspace:*",
+    "@inquirer/prompts": "^7.10.1",
+    "chalk": "^4.1.2",
+    "cli-spinners": "^3.4.0",
+    "commander": "^14.0.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/cli-spinners": "^2.0.0"
+  }
+}

@@ -1,5 +1,14 @@
-
 node_modules
-dist
-CLAUDE.md
+.pnpm-store
 .env
+*.log
+dist
+coverage
+.vitest
+.answers
+.conversations
+*.tsbuildinfo
+*.sqlite
+*.sqlite3
+answers
+.agent-vault/

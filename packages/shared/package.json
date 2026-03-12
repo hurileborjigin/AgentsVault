@@ -1,0 +1,31 @@
+{
+  "name": "@agent-vault/shared",
+  "version": "1.0.0",
+  "description": "Shared config schemas, errors, logger, and utilities for Agent Vault",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-vault/agent-vault.git",
+    "directory": "packages/shared"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "pino": "^9.9.4",
+    "zod": "^4.1.12"
+  }
+}

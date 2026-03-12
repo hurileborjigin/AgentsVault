@@ -1,0 +1,31 @@
+{
+  "name": "@agent-vault/retrieval",
+  "version": "1.0.0",
+  "description": "Context reduction, grounded prompting, and citation building for Agent Vault",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-vault/agent-vault.git",
+    "directory": "packages/retrieval"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-vault/core": "workspace:*",
+    "@agent-vault/shared": "workspace:*"
+  }
+}

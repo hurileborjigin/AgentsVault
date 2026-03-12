@@ -1,0 +1,30 @@
+{
+  "name": "@agent-vault/core",
+  "version": "1.0.0",
+  "description": "Core services and port interfaces for Agent Vault",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-vault/agent-vault.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-vault/shared": "workspace:*"
+  }
+}

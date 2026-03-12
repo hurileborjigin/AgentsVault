@@ -1,0 +1,32 @@
+{
+  "name": "@agent-vault/providers",
+  "version": "1.0.0",
+  "description": "OpenAI and Azure OpenAI embedding and answer providers for Agent Vault",
+  "license": "MIT",
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agent-vault/agent-vault.git",
+    "directory": "packages/providers"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "vitest run --passWithNoTests",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@agent-vault/core": "workspace:*",
+    "@agent-vault/shared": "workspace:*",
+    "openai": "^6.7.0"
+  }
+}

@@ -1,36 +1,30 @@
 {
-  "name": "agentvault",
-  "version": "0.0.1",
-  "description": "Terminal-first AI chat CLI foundation for Azure OpenAI.",
-  "bin": {
-    "agentvault": "./dist/index.js",
-    "thinker": "./dist/index.js"
-  },
-  "main": "index.js",
-  "scripts": {
-    "link-cli": "(yarn unlink --global || true) && chmod +x ./dist/index.js && yarn link --global",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsc -w"
-  },
+  "name": "agent-vault-workspace",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Agent Vault — CLI-first retrieval system for coding agents",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hurileborjigin/AgentVault.git"
+    "url": "https://github.com/agent-vault/agent-vault.git"
   },
-  "keywords": [],
-  "author": "Hurile Borjigin",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/hurileborjigin/AgentVault/issues"
+  "packageManager": "pnpm@10.28.2",
+  "engines": {
+    "node": ">=22.5.0"
   },
-  "homepage": "https://github.com/hurileborjigin/AgentVault#readme",
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev": "pnpm --filter @agent-vault/cli dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "ci:typecheck": "pnpm typecheck",
+    "ci:test": "pnpm test",
+    "ci:lint": "pnpm lint"
+  },
   "devDependencies": {
-    "@types/node": "^25.4.0",
-    "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "commander": "^14.0.3",
-    "dotenv": "^17.3.1",
-    "openai": "^6.27.0"
+    "@types/node": "^24.9.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

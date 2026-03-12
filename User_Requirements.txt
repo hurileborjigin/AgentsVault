@@ -1,0 +1,1312 @@
+Agent Vault — Architecture & Engineering Specification
+
+1. Purpose
+
+Agent Vault is an open-source CLI-first retrieval system designed for other coding agents and developer tools to ask grounded questions about a specific project or knowledge domain.
+
+The system supports two primary workflows:
+
+Ingestion: recursively parse local project documents and assets, transform them into searchable representations, and store them in a Supabase-backed vector index.
+
+One-shot query: answer a single question from the indexed knowledge base, return a grounded response with citations, export the exchange as markdown, and terminate.
+
+This is not a chat application. It is a deterministic, auditable, agent-facing CLI tool.
+
+2. Product Goals
+
+Primary goals
+
+Provide a clean CLI interface that other agents can invoke programmatically.
+
+Support ingestion of mixed project knowledge sources.
+
+Retrieve relevant context and generate grounded answers with references.
+
+Persist every query result as a markdown artifact.
+
+Use strong software design boundaries so storage, models, and parsers are swappable.
+
+Non-goals for v1
+
+Continuous conversations
+
+Web UI
+
+Multi-user collaborative platform
+
+Background daemon
+
+Real-time sync or file watching
+
+Fully general multimodal reasoning engine
+
+3. Supported Inputs and Outputs
+
+Supported input file types for ingestion
+
+pdf
+
+txt
+
+md
+
+png
+
+jpg
+
+jpeg
+
+webp
+
+Supported model providers for v1
+
+OpenAI
+
+Azure OpenAI
+
+Supported output formats for v1
+
+Terminal answer summary
+
+Markdown answer log saved locally
+
+4. Primary CLI Commands
+
+4.1 Ingest
+
+agent-vault ingest --source <path>
+
+Example:
+
+agent-vault ingest --source ./docs --project payment-service
+
+Behavior:
+
+recursively scan the source directory
+
+detect supported files
+
+parse and normalize content
+
+generate searchable chunks
+
+compute embeddings
+
+store metadata and vectors in Supabase
+
+Useful future flags:
+
+agent-vault ingest --source ./docs --project payment-service --reindex
+agent-vault ingest --source ./docs --project payment-service --dry-run
+agent-vault ingest --source ./docs --project payment-service --include-images
+
+4.2 Ask
+
+agent-vault ask "How does the retry logic work?"
+
+Example:
+
+agent-vault ask "How does the ingestion pipeline handle diagrams?" --project payment-service
+
+Behavior:
+
+embed the query
+
+retrieve relevant chunks from Supabase
+
+assemble grounded context
+
+generate a one-shot cited answer
+
+export the result as a markdown file
+
+stop after the answer is produced
+
+Useful future flags:
+
+agent-vault ask "How does auth work?" --project payment-service --top-k 8
+agent-vault ask "How does auth work?" --project payment-service --out ./.conversations
+agent-vault ask "How does auth work?" --project payment-service --format md
+
+4.3 Configure
+
+agent-vault configure
+
+This command is required in v1.
+
+Behavior:
+
+show interactive provider selection
+
+allow keyboard navigation
+
+choose provider
+
+list available models for that provider
+
+allow keyboard navigation again
+
+press Enter to confirm
+
+persist configuration locally
+
+Supported provider flow:
+
+Select provider:
+
+OpenAI
+
+Azure OpenAI
+
+Select model:
+
+list models defined for the chosen provider in configuration metadata
+
+Confirm
+
+Recommended prompt flow:
+
+? Select LLM provider
+❯ OpenAI
+  Azure OpenAI
+
+? Select model
+❯ gpt-4.1
+  gpt-4.1-mini
+
+? Confirm selection
+❯ Yes
+  No
+
+For Azure OpenAI, the configured model entry should represent the deployment name actually used by the API client.
+
+4.4 Status
+
+agent-vault status
+
+Behavior:
+
+verify local configuration exists
+
+print configured provider and model
+
+show configured project if present
+
+show indexed document count
+
+show indexed chunk count
+
+show last ingestion timestamp
+
+verify Supabase connectivity
+
+4.5 Doctor
+
+agent-vault doctor
+
+Behavior:
+
+validate environment variables
+
+validate config file structure
+
+validate Supabase connection
+
+validate embedding provider configuration
+
+validate output directory permissions
+
+validate required tables and extensions
+
+5. User Experience Principles
+
+CLI principles
+
+all commands must be predictable and scriptable
+
+exit codes must reflect success and failure clearly
+
+standard output should be concise
+
+debug mode may provide detailed traces
+
+interactive configuration should be the only keyboard-driven flow in v1
+
+Agent-facing principles
+
+deterministic structure
+
+concise terminal output
+
+citations in generated answer artifacts
+
+strong audit trail
+
+no hidden state except stored config and saved markdown logs
+
+6. System Architecture
+
+The system should be organized into five layers.
+
+6.1 CLI Layer
+
+Responsibilities:
+
+parse command-line input
+
+route commands to application services
+
+handle user-facing formatting
+
+expose exit codes
+
+This layer must contain no business logic beyond argument validation and command dispatch.
+
+6.2 Application Layer
+
+Responsibilities:
+
+orchestrate ingest and query workflows
+
+coordinate providers, repositories, and exporters
+
+map command input into domain operations
+
+Core services:
+
+IngestService
+
+AskService
+
+ConfigureService
+
+StatusService
+
+DoctorService
+
+ConversationLogService
+
+6.3 Domain Layer
+
+Responsibilities:
+
+define core entities and contracts
+
+encode business rules
+
+remain independent of infrastructure vendors
+
+Core entities:
+
+ProjectNamespace
+
+SourceDocument
+
+ParsedAsset
+
+DocumentChunk
+
+Citation
+
+IngestionJob
+
+QueryLog
+
+AnswerRecord
+
+ModelConfiguration
+
+6.4 Infrastructure Layer
+
+Responsibilities:
+
+integrate with filesystem
+
+parse PDFs and images
+
+perform OCR and captioning
+
+call embedding and answer models
+
+persist to Supabase
+
+export markdown files
+
+Adapters:
+
+SupabaseVectorStore
+
+OpenAIEmbeddingProvider
+
+AzureOpenAIEmbeddingProvider
+
+OpenAIAnswerProvider
+
+AzureOpenAIAnswerProvider
+
+PdfParser
+
+ImageParser
+
+MarkdownExporter
+
+LocalConfigRepository
+
+6.5 Storage Layer
+
+Two storage targets:
+
+Supabase for documents, chunks, embeddings, and ingestion metadata
+
+Local filesystem for configuration and markdown query logs
+
+7. Recommended Repository Structure
+
+agent-vault/
+├─ apps/
+│  └─ cli/
+│     └─ src/
+│        ├─ commands/
+│        │  ├─ ask.ts
+│        │  ├─ ingest.ts
+│        │  ├─ configure.ts
+│        │  ├─ status.ts
+│        │  └─ doctor.ts
+│        ├─ prompts/
+│        │  └─ configurePrompt.ts
+│        ├─ main.ts
+│        └─ index.ts
+├─ packages/
+│  ├─ core/
+│  │  └─ src/
+│  │     ├─ domain/
+│  │     ├─ services/
+│  │     ├─ ports/
+│  │     └─ types/
+│  ├─ ingestion/
+│  │  └─ src/
+│  │     ├─ discovery/
+│  │     ├─ parsers/
+│  │     ├─ extractors/
+│  │     ├─ chunking/
+│  │     └─ pipeline/
+│  ├─ retrieval/
+│  │  └─ src/
+│  │     ├─ search/
+│  │     ├─ rerank/
+│  │     ├─ prompts/
+│  │     └─ answering/
+│  ├─ storage/
+│  │  └─ src/
+│  │     ├─ supabase/
+│  │     ├─ fs/
+│  │     └─ config/
+│  ├─ providers/
+│  │  └─ src/
+│  │     ├─ embeddings/
+│  │     ├─ llm/
+│  │     ├─ ocr/
+│  │     └─ vision/
+│  └─ shared/
+│     └─ src/
+│        ├─ config/
+│        ├─ errors/
+│        ├─ logger/
+│        └─ utils/
+├─ supabase/
+│  ├─ migrations/
+│  └─ seed.sql
+├─ docs/
+├─ examples/
+├─ test/
+├─ .env.example
+├─ package.json
+├─ pnpm-workspace.yaml
+└─ turbo.json
+
+This keeps the CLI thin and keeps the architecture open for later provider swaps.
+
+8. Core Domain Model
+
+8.1 SourceDocument
+
+type SourceDocument = {
+  id: string;
+  projectId: string;
+  path: string;
+  fileType: "pdf" | "txt" | "md" | "image";
+  checksum: string;
+  title?: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+8.2 ParsedAsset
+
+type ParsedAsset = {
+  documentId: string;
+  modality: "text" | "ocr-text" | "image-caption";
+  content: string;
+  metadata: Record<string, unknown>;
+};
+
+8.3 DocumentChunk
+
+type DocumentChunk = {
+  id: string;
+  documentId: string;
+  chunkIndex: number;
+  modality: "text" | "ocr-text" | "image-caption";
+  content: string;
+  tokenCount?: number;
+  embeddingModel: string;
+  embedding: number[];
+  metadata: Record<string, unknown>;
+};
+
+8.4 Citation
+
+type Citation = {
+  documentPath: string;
+  chunkId: string;
+  excerpt: string;
+  score: number;
+  metadata?: Record<string, unknown>;
+};
+
+8.5 QueryLog
+
+type QueryLog = {
+  id: string;
+  question: string;
+  answer: string;
+  citations: Citation[];
+  createdAt: string;
+  outputPath: string;
+  provider: "openai" | "azure-openai";
+  model: string;
+};
+
+8.6 ModelConfiguration
+
+type ModelConfiguration = {
+  provider: "openai" | "azure-openai";
+  answerModel: string;
+  embeddingModel: string;
+  azureDeployment?: string;
+  updatedAt: string;
+};
+
+9. Configuration Design
+
+9.1 Why configuration is a first-class feature
+
+The tool needs a stable and explicit way to know which provider and model to use. A dedicated configure command makes provider selection discoverable, audit-friendly, and consistent across commands.
+
+9.2 Storage location
+
+Recommended local config path:
+
+~/.agent-vault/config.json
+
+Example:
+
+{
+  "provider": "openai",
+  "answerModel": "gpt-4.1",
+  "embeddingModel": "text-embedding-3-large",
+  "updatedAt": "2026-03-12T12:00:00.000Z"
+}
+
+Example for Azure OpenAI:
+
+{
+  "provider": "azure-openai",
+  "answerModel": "gpt-4.1-prod",
+  "embeddingModel": "text-embedding-3-large-prod",
+  "azureDeployment": "gpt-4.1-prod",
+  "updatedAt": "2026-03-12T12:00:00.000Z"
+}
+
+9.3 Provider registry design
+
+Keep a static registry in code to define supported providers and models.
+
+type ProviderRegistry = {
+  provider: "openai" | "azure-openai";
+  label: string;
+  answerModels: string[];
+  embeddingModels: string[];
+};
+
+This makes keyboard selection straightforward and reduces config ambiguity.
+
+9.4 Environment variables
+
+OpenAI:
+
+OPENAI_API_KEY
+
+Azure OpenAI:
+
+AZURE_OPENAI_API_KEY
+
+AZURE_OPENAI_ENDPOINT
+
+possibly deployment-specific environment entries if desired
+
+Supabase:
+
+SUPABASE_URL
+
+SUPABASE_SERVICE_ROLE_KEY
+
+Optional:
+
+AGENT_VAULT_DEFAULT_PROJECT
+
+AGENT_VAULT_OUTPUT_DIR
+
+10. Ingestion Pipeline
+
+The ingestion flow must be implemented as a stage-based pipeline.
+
+Stage 1: Source discovery
+
+Input:
+
+--source <directory>
+
+Behavior:
+
+recursively scan directory
+
+collect supported files only
+
+normalize file paths
+
+compute checksums
+
+create a manifest
+
+Stage 2: Parsing and extraction
+
+Text and markdown
+
+read raw content
+
+normalize whitespace
+
+preserve headings where possible
+
+PDF
+
+extract page text
+
+preserve page number metadata
+
+optionally extract embedded image context later
+
+Image
+
+For v1, use a text-first multimodal strategy:
+
+run OCR when text is present
+
+generate a brief visual caption or description
+
+store both as searchable text assets
+
+This avoids premature complexity while still making diagrams and screenshots retrievable.
+
+Stage 3: Chunking
+
+Recommended strategy:
+
+structure-aware chunking when headings are available
+
+fallback token-window chunking otherwise
+
+Suggested defaults:
+
+target chunk size: 600 to 1000 tokens
+
+overlap: 80 to 150 tokens
+
+Metadata per chunk should include:
+
+project id
+
+source path
+
+file type
+
+page number when applicable
+
+section heading when available
+
+modality
+
+chunk index
+
+checksum
+
+ingestion timestamp
+
+Stage 4: Embedding
+
+pass chunk text to the configured embedding provider
+
+validate vector dimension consistency
+
+persist vectors and metadata in Supabase
+
+Stage 5: Persistence
+
+upsert document entries
+
+replace or upsert chunk rows based on document checksum
+
+write ingestion job summary
+
+11. Multimodal Design Strategy
+
+v1 recommendation
+
+Treat multimodal retrieval as searchable text representations of non-text content.
+
+For images and image-heavy PDFs:
+
+OCR result becomes ocr-text
+
+visual caption becomes image-caption
+
+Benefits:
+
+simpler architecture
+
+one retrieval pipeline
+
+easier debugging
+
+cleaner citations
+
+better interoperability for agent use
+
+v2 extension path
+
+Later versions may add:
+
+dedicated image embeddings
+
+hybrid text plus image retrieval
+
+figure-region extraction from PDFs
+
+diagram-aware parsing
+
+12. Query Pipeline
+
+Step 1: receive question
+
+Input:
+
+agent-vault ask "specific question about the domain"
+
+Step 2: load configuration
+
+read provider and model from local config
+
+validate env vars for chosen provider
+
+Step 3: embed query
+
+use configured embedding model
+
+Step 4: retrieve candidate chunks
+
+vector search top 20 to 40
+
+optionally filter by project or file type
+
+Step 5: context reduction
+
+apply score threshold
+
+select best 5 to 8 chunks
+
+preserve metadata for citations
+
+Step 6: answer generation
+
+build grounded prompt
+
+instruct model to answer only from retrieved context
+
+require citations or explicit uncertainty
+
+Step 7: export markdown log
+
+create daily folder if missing
+
+create a unique markdown file for the query
+
+save question, answer, citations, and retrieved evidence
+
+Step 8: print terminal summary
+
+concise answer summary
+
+saved file path
+
+13. Retrieval Best Practices
+
+Recommended retrieval strategy for v1
+
+vector search for breadth
+
+metadata filtering for isolation
+
+strict context budget for answering
+
+Strong recommendation
+
+Do not use only top-3 raw vector results. Retrieve more broadly first, then reduce.
+
+Suggested flow:
+
+top 20 to 40 initial retrieval
+
+apply project and modality filters
+
+select top 5 to 8 final chunks
+
+answer from final context only
+
+Project namespace
+
+A project namespace must be supported to avoid mixing unrelated knowledge bases.
+
+Examples:
+
+agent-vault ingest --source ./docs --project payments-api
+agent-vault ask "How does retry logic work?" --project payments-api
+
+If no explicit project is supplied, the default may be inferred from the current working directory name.
+
+14. Supabase Data Model
+
+14.1 documents
+
+create table documents (
+  id uuid primary key default gen_random_uuid(),
+  project_id text not null,
+  path text not null,
+  file_type text not null,
+  checksum text not null,
+  title text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(project_id, path, checksum)
+);
+
+14.2 chunks
+
+create table chunks (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid not null references documents(id) on delete cascade,
+  chunk_index int not null,
+  modality text not null,
+  content text not null,
+  embedding vector(1536),
+  embedding_model text not null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+14.3 ingestion_jobs
+
+create table ingestion_jobs (
+  id uuid primary key default gen_random_uuid(),
+  project_id text not null,
+  source_path text not null,
+  status text not null,
+  stats jsonb not null default '{}'::jsonb,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz
+);
+
+Recommended indexes
+
+btree on documents(project_id, path)
+
+gin on documents(metadata)
+
+gin on chunks(metadata)
+
+vector index on chunks.embedding
+
+15. Local Markdown Log Design
+
+Folder rule
+
+exactly one folder per date
+
+multiple markdown files allowed inside that folder
+
+Recommended structure:
+
+.conversations/
+└─ 2026-03-12/
+   ├─ 2026-03-12T10-15-00_retry-logic.md
+   ├─ 2026-03-12T11-03-44_auth-flow.md
+   └─ 2026-03-12T16-48-29_pdf-diagrams.md
+
+Naming rule
+
+Use:
+
+timestamp
+
+slugified question prefix
+
+optional collision suffix
+
+Markdown format
+
+---
+id: 9c2e...
+created_at: 2026-03-12T16:48:29+01:00
+question: "How does the ingestion pipeline handle diagrams?"
+provider: "openai"
+model: "gpt-4.1"
+embedding_model: "text-embedding-3-large"
+project: "payment-service"
+top_k: 8
+sources:
+  - docs/architecture.pdf
+  - docs/ingestion.md
+---
+
+# Question
+How does the ingestion pipeline handle diagrams?
+
+# Answer
+...
+
+# Citations
+1. docs/architecture.pdf, page 3
+2. docs/ingestion.md, chunk 5
+
+# Retrieved Context
+## Source 1
+...
+
+This format makes logs inspectable, reproducible, and agent-friendly.
+
+16. Core Interfaces
+
+16.1 Vector store
+
+interface VectorStore {
+  upsertDocuments(docs: SourceDocument[]): Promise<void>;
+  upsertChunks(chunks: DocumentChunk[]): Promise<void>;
+  search(queryEmbedding: number[], opts: SearchOptions): Promise<RetrievedChunk[]>;
+}
+
+16.2 Document parser
+
+interface DocumentParser {
+  supports(filePath: string): boolean;
+  parse(filePath: string): Promise<ParsedAsset[]>;
+}
+
+16.3 Chunker
+
+interface Chunker {
+  chunk(input: ParsedAsset[]): Promise<DocumentChunk[]>;
+}
+
+16.4 Embedding provider
+
+interface EmbeddingProvider {
+  embed(texts: string[]): Promise<number[][]>;
+  model(): string;
+  dimensions(): number;
+}
+
+16.5 Answer provider
+
+interface AnswerProvider {
+  answer(input: {
+    question: string;
+    context: RetrievedChunk[];
+    instructions?: string;
+  }): Promise<{
+    answer: string;
+    citations: Citation[];
+  }>;
+}
+
+16.6 Configuration repository
+
+interface ConfigRepository {
+  load(): Promise<ModelConfiguration | null>;
+  save(config: ModelConfiguration): Promise<void>;
+}
+
+16.7 Conversation exporter
+
+interface ConversationExporter {
+  export(record: QueryLog): Promise<string>;
+}
+
+17. Application Services
+
+IngestService
+
+Responsibilities:
+
+discover files
+
+invoke parser factory
+
+run chunker
+
+request embeddings
+
+persist documents and chunks
+
+return ingestion report
+
+AskService
+
+Responsibilities:
+
+load config
+
+embed query
+
+search vector store
+
+construct answer prompt
+
+request answer generation
+
+export markdown record
+
+return response summary
+
+ConfigureService
+
+Responsibilities:
+
+load provider registry
+
+run interactive selection prompts
+
+validate environment for selected provider
+
+persist configuration locally
+
+StatusService
+
+Responsibilities:
+
+inspect configuration
+
+inspect vector store health
+
+inspect ingestion stats
+
+DoctorService
+
+Responsibilities:
+
+validate environment and connectivity
+
+identify missing setup pieces
+
+return remediation guidance
+
+18. Configuration Command Interaction Design
+
+Functional requirement
+
+The configure command must support keyboard-driven provider and model selection.
+
+Suggested implementation
+
+Use an interactive prompt library suitable for Node.js CLI development.
+
+Flow:
+
+provider selection list
+
+answer model selection list
+
+embedding model selection list
+
+confirm
+
+save config
+
+Example UX
+
+$ agent-vault configure
+
+? Select provider
+❯ OpenAI
+  Azure OpenAI
+
+? Select answer model
+❯ gpt-4.1
+  gpt-4.1-mini
+
+? Select embedding model
+❯ text-embedding-3-large
+  text-embedding-3-small
+
+? Confirm configuration
+❯ Yes
+  No
+
+✔ Configuration saved to ~/.agent-vault/config.json
+
+Azure-specific UX note
+
+If Azure deployments differ from model names, the interface should display friendly labels while saving the deployment identifier needed by the SDK.
+
+19. Error Handling Principles
+
+Define structured error classes:
+
+ConfigError
+
+ValidationError
+
+ParsingError
+
+EmbeddingError
+
+RetrievalError
+
+PersistenceError
+
+ExportError
+
+Behavioral rules:
+
+one bad file must not abort the whole ingest job unless failure threshold is exceeded
+
+errors must be surfaced clearly in CLI output
+
+doctor should explain how to repair common setup issues
+
+stack traces should only appear in debug mode
+
+20. Idempotency and Re-indexing
+
+Ingestion must be idempotent.
+
+Recommended strategy:
+
+compute file checksum before parsing
+
+compare against existing stored checksum
+
+skip unchanged files by default
+
+support explicit --reindex to force refresh
+
+This prevents duplicate chunks and reduces embedding cost.
+
+21. Testing Strategy
+
+Unit tests
+
+config loading and saving
+
+parser behavior by file type
+
+chunker output
+
+slug and path generation
+
+citation formatting
+
+prompt assembly
+
+Integration tests
+
+ingest a fixture directory
+
+verify documents and chunks stored in Supabase test environment
+
+run ask against indexed fixtures
+
+verify markdown log written correctly
+
+CLI tests
+
+command parsing
+
+help output
+
+interactive configuration behavior where feasible
+
+failure exit codes
+
+22. Recommended Tech Stack
+
+Language: TypeScript
+
+Runtime: Node.js
+
+CLI framework: Commander
+
+Validation: Zod
+
+Logging: pino
+
+Testing: Vitest
+
+DB: Supabase Postgres with vector support
+
+Prompt UI: a keyboard-friendly CLI prompt library
+
+This stack is pragmatic, well understood, and appropriate for open-source contributor adoption.
+
+23. Security and Operational Considerations
+
+never commit API keys
+
+keep provider credentials in environment variables
+
+store only non-secret model selection in local config
+
+avoid storing raw full documents in logs unless intentionally needed
+
+prefer service-role usage only where operationally justified
+
+ensure markdown exports do not accidentally leak sensitive environment values
+
+24. End-to-End Flow Summary
+
+Ingestion flow
+
+CLI command
+  -> IngestService
+    -> FileScanner
+    -> ParserFactory
+    -> Extractors
+    -> Chunker
+    -> EmbeddingProvider
+    -> SupabaseVectorStore
+    -> IngestionReport
+
+Query flow
+
+CLI command
+  -> AskService
+    -> ConfigRepository
+    -> EmbeddingProvider
+    -> SupabaseVectorStore search
+    -> ContextAssembler
+    -> AnswerProvider
+    -> ConversationExporter
+    -> Markdown file saved to daily folder
+
+Configuration flow
+
+CLI command
+  -> ConfigureService
+    -> ProviderRegistry
+    -> InteractivePrompt
+    -> Config validation
+    -> ConfigRepository save
+
+25. Release Scope Recommendation
+
+Must-have for v1
+
+ingest
+
+ask
+
+configure
+
+recursive source discovery
+
+PDF, TXT, MD, image support
+
+OCR and image caption path
+
+Supabase vector persistence
+
+cited answer generation
+
+markdown export with daily folders
+
+Strongly recommended for v1
+
+status
+
+doctor
+
+--project
+
+checksum-based deduplication
+
+structured error handling
+
+Defer until v2
+
+continuous conversations
+
+web UI
+
+advanced reranking pipelines
+
+image-native retrieval
+
+daemon mode
+
+live sync
+
+26. Final Architectural Position
+
+The best architecture for Agent Vault is:
+
+CLI-first
+
+clean architecture / ports-and-adapters
+
+pipeline-oriented ingestion
+
+text-first multimodal retrieval in v1
+
+Supabase-backed vector storage
+
+local markdown audit logs
+
+interactive provider/model configuration via keyboard
+
+This gives you a system that is practical to build, easy to reason about, friendly to contributors, and well suited for programmatic use by external agents.
+
+27. Recommended Next Deliverables
+
+After this specification, the next engineering artifacts should be:
+
+detailed database migration files
+
+TypeScript interface package skeleton
+
+CLI command contracts
+
+sequence diagrams for ingest, ask, and configure
+
+minimal implementation roadmap for v1
+
