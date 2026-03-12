@@ -86,6 +86,13 @@ export class SqliteVectorStore implements VectorStore {
       create index if not exists idx_documents_project_path on documents(project_id, path);
       create index if not exists idx_chunks_document_id on chunks(document_id);
       create index if not exists idx_jobs_project_status on ingestion_jobs(project_id, status);
+
+      create virtual table if not exists chunks_fts using fts5(
+        chunk_id unindexed,
+        content,
+        content='',
+        tokenize='porter ascii'
+      );
     `);
   }
 
@@ -144,6 +151,9 @@ export class SqliteVectorStore implements VectorStore {
         metadata=excluded.metadata
     `);
 
+    const ftsDelete = this.db.prepare(`delete from chunks_fts where chunk_id = ?`);
+    const ftsInsert = this.db.prepare(`insert into chunks_fts (chunk_id, content) values (?, ?)`);
+
     this.db.exec("BEGIN");
     try {
       for (const chunk of chunks) {
@@ -157,6 +167,8 @@ export class SqliteVectorStore implements VectorStore {
           chunk.embeddingModel,
           JSON.stringify(chunk.metadata ?? {}),
         );
+        ftsDelete.run(chunk.id);
+        ftsInsert.run(chunk.id, chunk.content);
       }
       this.db.exec("COMMIT");
     } catch (error) {
@@ -192,26 +204,79 @@ export class SqliteVectorStore implements VectorStore {
       metadata: string;
     }>;
 
-    const scored = rows
-      .map((row) => {
-        const embedding = JSON.parse(row.embedding) as number[];
-        const score = cosineSimilarity(queryEmbedding, embedding);
-        return {
-          chunkId: row.chunk_id,
-          documentId: row.document_id,
-          documentPath: row.document_path,
-          chunkIndex: row.chunk_index,
-          modality: row.modality,
-          content: row.content,
-          score,
-          metadata: JSON.parse(row.metadata || "{}") as Record<string, unknown>,
-        } satisfies RetrievedChunk;
-      })
-      .filter((row) => row.score >= 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, opts.topK);
+    // --- Vector scoring ---
+    const vectorScores = new Map<string, { score: number; row: (typeof rows)[number] }>();
+    for (const row of rows) {
+      const embedding = JSON.parse(row.embedding) as number[];
+      const score = cosineSimilarity(queryEmbedding, embedding);
+      if (score >= 0) {
+        vectorScores.set(row.chunk_id, { score, row });
+      }
+    }
 
-    return scored;
+    // --- FTS5 / BM25 scoring ---
+    const bm25Scores = new Map<string, number>();
+    if (opts.query) {
+      try {
+        const ftsRows = this.db
+          .prepare(
+            `select chunk_id, rank
+             from chunks_fts
+             where chunks_fts match ?
+             order by rank
+             limit ?`,
+          )
+          .all(opts.query, opts.topK * 2) as Array<{ chunk_id: string; rank: number }>;
+
+        if (ftsRows.length > 0) {
+          const maxAbsRank = Math.max(...ftsRows.map((r) => Math.abs(r.rank)));
+          for (const ftsRow of ftsRows) {
+            bm25Scores.set(
+              ftsRow.chunk_id,
+              maxAbsRank > 0 ? Math.abs(ftsRow.rank) / maxAbsRank : 0,
+            );
+          }
+        }
+      } catch {
+        // FTS table may not exist yet — fall back to vector-only
+      }
+    }
+
+    // --- Union both result sets, store individual scores in metadata ---
+    const allChunkIds = new Set([...vectorScores.keys(), ...bm25Scores.keys()]);
+    const results: RetrievedChunk[] = [];
+
+    for (const chunkId of allChunkIds) {
+      const vectorEntry = vectorScores.get(chunkId);
+      const bm25 = bm25Scores.get(chunkId);
+      const vectorScore = vectorEntry?.score ?? 0;
+
+      let row = vectorEntry?.row;
+      if (!row) {
+        row = rows.find((r) => r.chunk_id === chunkId);
+        if (!row) continue;
+      }
+
+      const metadata = JSON.parse(row.metadata || "{}") as Record<string, unknown>;
+      metadata.vectorScore = vectorScore;
+      if (bm25 !== undefined) {
+        metadata.bm25Score = bm25;
+      }
+
+      results.push({
+        chunkId: row.chunk_id,
+        documentId: row.document_id,
+        documentPath: row.document_path,
+        chunkIndex: row.chunk_index,
+        modality: row.modality,
+        content: row.content,
+        score: vectorScore,
+        metadata,
+      });
+    }
+
+    results.sort((a, b) => b.score - a.score);
+    return results.slice(0, opts.topK);
   }
 
   async deleteByProjectAndPath(projectId: string, docPath: string): Promise<void> {

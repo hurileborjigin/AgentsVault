@@ -11,6 +11,7 @@ import {
 export type SearchOptions = {
   projectId: string;
   topK: number;
+  query?: string;
   fileTypes?: Array<"pdf" | "txt" | "md" | "image">;
 };
 

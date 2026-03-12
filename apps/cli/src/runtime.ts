@@ -10,7 +10,7 @@ import {
   TextParser,
 } from "@agents-vault/ingestion";
 import { createAnswerProvider, createEmbeddingProvider, StubOcrProvider, StubVisionCaptionProvider } from "@agents-vault/providers";
-import { reduceContextByScore } from "@agents-vault/retrieval";
+import { reduceContextByScore, rrfRerank } from "@agents-vault/retrieval";
 import {
   ConfigError,
   modelConfigurationSchema,
@@ -91,6 +91,7 @@ export function createRuntime(cwd: string) {
       embeddingProviderFactory: createEmbeddingProvider,
       answerProviderFactory: createAnswerProvider,
       reduceContext: reduceContextByScore,
+      rerank: rrfRerank,
     });
   }
 

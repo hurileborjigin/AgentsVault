@@ -14,6 +14,7 @@ export class AskService {
       embeddingProviderFactory: (config: ModelConfiguration) => EmbeddingProvider;
       answerProviderFactory: (config: ModelConfiguration) => AnswerProvider;
       reduceContext: <T extends { score: number }>(items: T[], maxItems: number) => T[];
+      rerank: <T extends { score: number; metadata: Record<string, unknown> }>(items: T[]) => T[];
     },
   ) {}
 
@@ -35,9 +36,11 @@ export class AskService {
     const retrieved = await this.dependencies.vectorStore.search(queryEmbedding, {
       projectId: request.projectId,
       topK: retrievalWindow,
+      query: request.question,
     });
 
-    const reduced = this.dependencies.reduceContext(retrieved, Math.max(1, Math.min(8, request.topK ?? 8)));
+    const reranked = this.dependencies.rerank(retrieved);
+    const reduced = this.dependencies.reduceContext(reranked, Math.max(1, Math.min(8, request.topK ?? 8)));
 
     if (reduced.length === 0) {
       throw new RetrievalError(

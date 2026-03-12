@@ -13,3 +13,6 @@ coverage
 .answers
 bin/
 .turbo/
+.DS_Store
+packanges/.DS_Store
+packages/*/.DS_Store

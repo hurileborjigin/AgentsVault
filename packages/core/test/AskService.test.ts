@@ -79,6 +79,7 @@ function createService(overrides?: {
   embeddingProvider?: EmbeddingProvider;
   answerProvider?: AnswerProvider;
   logService?: ConversationLogService;
+  rerank?: <T extends { score: number; metadata: Record<string, unknown> }>(items: T[]) => T[];
 }) {
   const embeddingProvider = overrides?.embeddingProvider ?? createMockEmbeddingProvider();
   const answerProvider = overrides?.answerProvider ?? createMockAnswerProvider();
@@ -90,6 +91,7 @@ function createService(overrides?: {
     embeddingProviderFactory: () => embeddingProvider,
     answerProviderFactory: () => answerProvider,
     reduceContext: (items, max) => [...items].sort((a, b) => b.score - a.score).slice(0, max),
+    rerank: overrides?.rerank ?? ((items) => items),
   });
 }
 
@@ -178,5 +180,17 @@ describe("AskService", () => {
       expect.any(Array),
       expect.objectContaining({ topK: 40 }),
     );
+  });
+
+  it("calls rerank with search results before reducing context", async () => {
+    const chunks = [makeChunk({ chunkId: "c-1", score: 0.9 }), makeChunk({ chunkId: "c-2", score: 0.8 })];
+    const vectorStore = createMockVectorStore(chunks);
+    const rerank = vi.fn((items) => items);
+
+    const service = createService({ vectorStore, rerank });
+    await service.ask({ question: "test", projectId: "test" });
+
+    expect(rerank).toHaveBeenCalledTimes(1);
+    expect(rerank).toHaveBeenCalledWith(chunks);
   });
 });
