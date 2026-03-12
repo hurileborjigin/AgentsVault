@@ -1,7 +1,7 @@
 {
   "name": "agents-vault",
   "private": false,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Agents Vault — CLI-first retrieval system for coding agents",
   "license": "MIT",
   "repository": {
