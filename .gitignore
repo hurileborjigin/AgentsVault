@@ -5,10 +5,9 @@ node_modules
 dist
 coverage
 .vitest
-.answers
-.conversations
 *.tsbuildinfo
 *.sqlite
 *.sqlite3
-answers
 .agent-vault/
+.conversations
+.answers

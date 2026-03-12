@@ -155,7 +155,7 @@ pnpm link --global
 
 ## Contributing
 
-Contributions are welcome.  
+Contributions are welcome.
 Before opening a PR, run:
 
 ```bash
@@ -166,5 +166,4 @@ pnpm lint
 
 ## License
 
-No license file is currently present in this repository.  
-Add a `LICENSE` file before public distribution.
+MIT — see [LICENSE](./LICENSE).
