@@ -19,6 +19,10 @@ export class StatusService {
     private readonly vectorStore: VectorStore,
   ) {}
 
+  async listProjects() {
+    return this.vectorStore.listProjects();
+  }
+
   async getStatus(projectId?: string) {
     const config = await this.configRepository.load();
     let stats = { documents: 0, chunks: 0, lastIngestionAt: null as string | null };

@@ -46,6 +46,7 @@ function createMockVectorStore(chunks: RetrievedChunk[] = [makeChunk()]): Vector
     finishIngestionJob: vi.fn().mockResolvedValue(undefined),
     getProjectStats: vi.fn().mockResolvedValue({ documents: 1, chunks: 1, lastIngestionAt: null }),
     healthCheck: vi.fn().mockResolvedValue({ ok: true, detail: "ok" }),
+    listProjects: vi.fn().mockResolvedValue([]),
   };
 }
 

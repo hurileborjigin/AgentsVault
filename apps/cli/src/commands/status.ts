@@ -11,9 +11,26 @@ export function registerStatusCommand(
     .command("status")
     .description("Show configuration, indexing and local storage status")
     .option("--project <id>", "Project namespace")
+    .option("--list-projects", "List all indexed projects")
     .action(async (options) => {
       try {
         const statusService = statusServiceFactory();
+
+        if (options.listProjects) {
+          const projects = await statusService.listProjects();
+          if (projects.length === 0) {
+            console.log("\nNo projects found. Run `agents-vault ingest` first.\n");
+            return;
+          }
+          console.log();
+          console.log(header("Projects"));
+          console.log(divider());
+          for (const p of projects) {
+            console.log(info(p.projectId, `${p.documents} docs, ${p.chunks} chunks`));
+          }
+          console.log();
+          return;
+        }
         const status = await statusService.getStatus(options.project || defaultProject);
 
         console.log();

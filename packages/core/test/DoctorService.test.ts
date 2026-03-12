@@ -32,6 +32,7 @@ function createMockVectorStore(healthy = true): VectorStore {
     healthCheck: vi.fn().mockResolvedValue(
       healthy ? { ok: true, detail: "SQLite OK" } : { ok: false, detail: "DB missing" },
     ),
+    listProjects: vi.fn().mockResolvedValue([]),
   };
 }
 

@@ -35,6 +35,7 @@ export interface VectorStore {
   createIngestionJob(job: IngestionJob): Promise<void>;
   finishIngestionJob(jobId: string, status: "completed" | "failed", stats: Record<string, unknown>): Promise<void>;
   getProjectStats(projectId?: string): Promise<{ documents: number; chunks: number; lastIngestionAt: string | null }>;
+  listProjects(): Promise<Array<{ projectId: string; documents: number; chunks: number }>>;
   healthCheck(): Promise<{ ok: boolean; detail: string }>;
 }
 

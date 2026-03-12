@@ -30,6 +30,7 @@ function createMockVectorStore(): VectorStore {
     finishIngestionJob: vi.fn(),
     getProjectStats: vi.fn().mockResolvedValue({ documents: 5, chunks: 42, lastIngestionAt: "2026-03-01T00:00:00.000Z" }),
     healthCheck: vi.fn().mockResolvedValue({ ok: true, detail: "SQLite OK" }),
+    listProjects: vi.fn().mockResolvedValue([]),
   };
 }
 

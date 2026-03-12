@@ -421,6 +421,27 @@ export class SqliteVectorStore implements VectorStore {
     };
   }
 
+  async listProjects(): Promise<Array<{ projectId: string; documents: number; chunks: number }>> {
+    const rows = this.db
+      .prepare(`
+        select
+          d.project_id,
+          count(distinct d.id) as documents,
+          count(c.id) as chunks
+        from documents d
+        left join chunks c on c.document_id = d.id
+        group by d.project_id
+        order by d.project_id
+      `)
+      .all() as Array<{ project_id: string; documents: number; chunks: number }>;
+
+    return rows.map((row) => ({
+      projectId: row.project_id,
+      documents: row.documents,
+      chunks: row.chunks,
+    }));
+  }
+
   async healthCheck(): Promise<{ ok: boolean; detail: string }> {
     try {
       this.db.prepare("select 1").get();
