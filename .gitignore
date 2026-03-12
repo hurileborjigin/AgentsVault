@@ -11,3 +11,5 @@ coverage
 .agents-vault/
 .conversations
 .answers
+bin/
+.turbo/
