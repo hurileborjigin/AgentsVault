@@ -46,25 +46,32 @@ AgentVault acts as a knowledge gateway for local repositories, allowing agents t
 - `pnpm` `10+`
 - OpenAI or Azure OpenAI credentials, **or** [Ollama](https://ollama.com) for local models
 
+## Installation
+
+```bash
+npm install -g agents-vault
+```
+
+Then run:
+
+```bash
+agents-vault --help
+```
+
 ## Quick Start
+
+```bash
+agents-vault configure
+agents-vault ingest --source ./docs --project my-project
+agents-vault ask "How does auth work?" --project my-project
+```
+
+### From source
 
 ```bash
 pnpm install
 pnpm build
-```
-
-Run from source:
-
-```bash
 node apps/cli/dist/index.js --help
-```
-
-Link globally:
-
-```bash
-cd apps/cli
-pnpm link --global
-agents-vault --help
 ```
 
 ## Command Reference
