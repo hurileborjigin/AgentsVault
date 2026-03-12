@@ -21,11 +21,14 @@ export class ConfigureService {
       throw new ValidationError("Azure OpenAI requires a deployment name.");
     }
 
+    const embeddingModel = input.embeddingModel ?? DEFAULT_EMBEDDING_MODEL;
+
     const config: ModelConfiguration = {
       provider: input.provider,
       answerModel: input.answerModel,
-      embeddingModel: DEFAULT_EMBEDDING_MODEL,
+      embeddingModel,
       azureDeployment: input.azureDeployment,
+      ollamaBaseUrl: input.provider === "ollama" ? (input.ollamaBaseUrl ?? "http://localhost:11434") : undefined,
       outputDir: input.outputDir,
       dbPath: input.dbPath,
       defaultProject: input.defaultProject,

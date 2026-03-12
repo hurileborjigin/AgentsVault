@@ -8,7 +8,7 @@ Ingest local documents, ask grounded questions, and keep auditable markdown conv
 - Retrieval-first workflow for coding agents and developer tooling.
 - Monorepo architecture with clean ports-and-adapters boundaries.
 - Local SQLite vector store (no Supabase dependency required).
-- OpenAI and Azure OpenAI support.
+- OpenAI, Azure OpenAI, and Ollama (local models) support.
 - Deterministic CLI output with explicit failure exit codes.
 
 ## Features
@@ -24,7 +24,7 @@ Ingest local documents, ask grounded questions, and keep auditable markdown conv
 
 - Node.js `24+`
 - `pnpm` `10+`
-- OpenAI or Azure OpenAI credentials
+- OpenAI or Azure OpenAI credentials, **or** [Ollama](https://ollama.com) for local models
 
 ## Quick Start
 
@@ -96,6 +96,76 @@ Behavior:
 - At runtime, credentials are loaded into process environment from the encrypted auth vault.
 - You can still provide credentials through shell environment variables if preferred.
 
+## Using Ollama (Local Models)
+
+Agent Vault supports [Ollama](https://ollama.com) for fully local inference — no API keys, no cloud calls.
+
+### 1. Install Ollama
+
+```bash
+# macOS
+brew install ollama
+
+# or download from https://ollama.com/download
+```
+
+### 2. Pull models
+
+You need one model for answering questions and one for generating embeddings.
+
+```bash
+# Start the Ollama server
+ollama serve
+
+# Pull an answer model
+ollama pull gpt-oss:20b
+
+# Pull an embedding model
+ollama pull embeddinggemma
+```
+
+Other popular combinations:
+
+| Answer model | Embedding model | Notes |
+|---|---|---|
+| `gpt-oss:20b` | `embeddinggemma` | Recommended — strong reasoning + fast embeddings |
+| `llama3.2` | `nomic-embed-text` | Lightweight, good for smaller machines |
+| `mistral` | `mxbai-embed-large` | Balanced quality and speed |
+| `qwen2:7b` | `nomic-embed-text` | Good multilingual support |
+
+### 3. Configure Agent Vault
+
+```bash
+agent-vault configure
+```
+
+Select **Ollama (Local)** when prompted. Agent Vault will auto-discover your pulled models:
+
+```
+? Select LLM provider: Ollama (Local)
+? Ollama base URL: http://localhost:11434
+Discovering local models...
+? Select answer model: gpt-oss:20b
+? Select embedding model: embeddinggemma
+✔ Configuration saved
+```
+
+No API keys are needed — Ollama runs entirely on your machine.
+
+### 4. Ingest and ask
+
+```bash
+agent-vault ingest --source ./my-docs --project my-project
+agent-vault ask "What does this project do?" --project my-project
+```
+
+### Troubleshooting Ollama
+
+- Make sure `ollama serve` is running before using `ingest` or `ask`.
+- If embedding fails mid-ingest, retry with `--reindex`. Large batches can occasionally cause Ollama's internal subprocess to restart.
+- To verify Ollama is reachable: `curl http://localhost:11434/api/tags`
+- If using a non-default port or remote Ollama instance, specify the base URL during `agent-vault configure`.
+
 ## Supported Inputs
 
 Ingestion supports:
@@ -113,7 +183,7 @@ packages/core       # domain entities, ports, application services
 packages/ingestion  # discovery/parsing/chunking pipeline
 packages/retrieval  # context reduction and answer prompt assembly
 packages/storage    # sqlite vector store + local config/auth/export repos
-packages/providers  # OpenAI/Azure providers + OCR/vision stubs
+packages/providers  # OpenAI/Azure/Ollama providers + OCR/vision stubs
 packages/shared     # schemas, errors, utilities
 ```
 

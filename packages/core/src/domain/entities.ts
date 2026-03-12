@@ -61,7 +61,7 @@ export type QueryLog = {
   citations: Citation[];
   createdAt: string;
   outputPath: string;
-  provider: "openai" | "azure-openai";
+  provider: "openai" | "azure-openai" | "ollama";
   model: string;
   embeddingModel: string;
   project: string;

@@ -50,7 +50,9 @@ export type AskSummary = {
 export type ConfigureRequest = {
   provider: ModelConfiguration["provider"];
   answerModel: string;
+  embeddingModel?: string;
   azureDeployment?: string;
+  ollamaBaseUrl?: string;
   outputDir: string;
   dbPath: string;
   defaultProject?: string;

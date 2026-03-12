@@ -1,4 +1,4 @@
-export type ProviderId = "openai" | "azure-openai";
+export type ProviderId = "openai" | "azure-openai" | "ollama";
 
 export type ProviderRegistryEntry = {
   provider: ProviderId;
@@ -21,6 +21,12 @@ export const PROVIDER_REGISTRY: ProviderRegistryEntry[] = [
     label: "Azure OpenAI",
     answerModels: ["gpt-4.1-prod", "gpt-4.1-mini-prod"],
     embeddingModels: [DEFAULT_EMBEDDING_MODEL, "text-embedding-3-small"],
+  },
+  {
+    provider: "ollama",
+    label: "Ollama (Local)",
+    answerModels: ["llama3.2", "mistral", "codellama", "gemma2"],
+    embeddingModels: ["nomic-embed-text", "mxbai-embed-large", "all-minilm", "snowflake-arctic-embed"],
   },
 ];
 

@@ -28,7 +28,7 @@ export class LocalConfigRepository implements ConfigRepository {
         }
 
         const legacy = parsed as Partial<ModelConfiguration> & {
-          provider?: "openai" | "azure-openai";
+          provider?: "openai" | "azure-openai" | "ollama";
           answerModel?: string;
           embeddingModel?: string;
           updatedAt?: string;

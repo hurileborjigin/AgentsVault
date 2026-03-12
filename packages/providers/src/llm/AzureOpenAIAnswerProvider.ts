@@ -1,26 +1,6 @@
 import { AzureOpenAI } from "openai";
 import { AnswerProvider, Citation, RetrievedChunk } from "@agent-vault/core";
-
-function buildPrompt(question: string, context: RetrievedChunk[], instructions?: string): string {
-  const contextLines = context
-    .map(
-      (chunk, index) =>
-        `[${index + 1}] ${chunk.documentPath}#${chunk.chunkIndex}\n${chunk.content}`,
-    )
-    .join("\n\n");
-
-  return `${instructions ?? ""}\n\nQuestion:\n${question}\n\nContext:\n${contextLines}`;
-}
-
-function buildFallbackCitations(context: RetrievedChunk[]): Citation[] {
-  return context.map((chunk) => ({
-    documentPath: chunk.documentPath,
-    chunkId: chunk.chunkId,
-    excerpt: chunk.content.slice(0, 240),
-    score: chunk.score,
-    metadata: chunk.metadata,
-  }));
-}
+import { buildPrompt, buildFallbackCitations } from "./promptUtils";
 
 export class AzureOpenAIAnswerProvider implements AnswerProvider {
   private readonly client: AzureOpenAI;

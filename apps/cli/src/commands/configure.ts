@@ -22,7 +22,11 @@ export function registerConfigureCommand(program: Command, configureService: Con
         });
         console.log();
         console.log(success(`Configuration saved to ${repo.getPath()}`));
-        console.log(label("Note: API credentials are read from shell environment variables and are not stored in config."));
+        if (selection.provider === "ollama") {
+          console.log(label("Note: Ollama runs locally — no API keys needed. Make sure Ollama is running before using ingest/ask."));
+        } else {
+          console.log(label("Note: API credentials are read from shell environment variables and are not stored in config."));
+        }
       } catch (error) {
         console.error(`configure failed: ${error instanceof Error ? error.message : "unknown error"}`);
         process.exitCode = 1;

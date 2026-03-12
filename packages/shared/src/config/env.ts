@@ -22,7 +22,11 @@ export function resolveConfigPath(): string {
   return path.join(os.homedir(), ".agent-vault", "agent-vault.json");
 }
 
-export function validateProviderEnv(provider: "openai" | "azure-openai"): ProviderEnvValidation {
+export function validateProviderEnv(provider: "openai" | "azure-openai" | "ollama"): ProviderEnvValidation {
+  if (provider === "ollama") {
+    return { ok: true, missing: [] };
+  }
+
   const required =
     provider === "openai"
       ? ["OPENAI_API_KEY"]

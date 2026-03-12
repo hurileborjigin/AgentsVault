@@ -7,7 +7,9 @@ import { ProviderId, PROVIDER_REGISTRY } from "@agent-vault/shared";
 export type ConfigurePromptResult = {
   provider: ProviderId;
   answerModel: string;
+  embeddingModel?: string;
   azureDeployment?: string;
+  ollamaBaseUrl?: string;
 };
 
 const RECENT_ANSWER_MODEL_PRIORITY = ["gpt-5.2", "gpt-5", "gpt-4.1", "gpt-4o", "gpt-4.1-mini", "o4-mini"];
@@ -43,6 +45,7 @@ async function fallbackSelect(label: string, options: string[]): Promise<string>
 }
 
 function requiredProviderKeys(provider: ProviderId): string[] {
+  if (provider === "ollama") return [];
   return provider === "openai"
     ? ["OPENAI_API_KEY"]
     : ["AZURE_OPENAI_ENDPOINT", "AZURE_OPENAI_API_VERSION", "AZURE_OPENAI_API_KEY"];
@@ -54,6 +57,8 @@ function hasProviderCredentials(provider: ProviderId): boolean {
 
 async function promptProviderCredentials(provider: ProviderId, forcePrompt: boolean): Promise<void> {
   const requiredKeys = requiredProviderKeys(provider);
+  if (requiredKeys.length === 0) return;
+
   const hasAll = hasProviderCredentials(provider);
 
   if (!forcePrompt && hasAll) {
@@ -89,6 +94,8 @@ async function promptProviderCredentials(provider: ProviderId, forcePrompt: bool
 }
 
 async function ensureProviderCredentials(provider: ProviderId): Promise<void> {
+  if (provider === "ollama") return;
+
   if (!stdin.isTTY || !stdout.isTTY) {
     await promptProviderCredentials(provider, false);
     return;
@@ -216,11 +223,55 @@ async function discoverAzureAnswerDeployments(): Promise<string[]> {
   return sortByRecentPriority(answerDeployments, RECENT_ANSWER_MODEL_PRIORITY);
 }
 
-async function discoverAnswerModels(provider: ProviderId): Promise<string[]> {
+type OllamaTagsResponse = {
+  models?: Array<{ name?: string; details?: { family?: string } }>;
+};
+
+async function discoverOllamaModels(baseUrl: string): Promise<{ answer: string[]; embedding: string[] }> {
+  const response = await fetch(`${baseUrl}/api/tags`);
+  if (!response.ok) {
+    throw new Error(`Ollama model discovery failed (status ${response.status}). Is Ollama running?`);
+  }
+
+  const body = (await response.json()) as OllamaTagsResponse;
+  const models = (body.models ?? [])
+    .map((m) => m.name ?? "")
+    .filter(Boolean)
+    .map((name) => name.replace(/:latest$/, ""));
+
+  const embeddingKeywords = ["embed", "minilm", "snowflake", "bge", "e5-"];
+  const embedding = models.filter((name) =>
+    embeddingKeywords.some((kw) => name.toLowerCase().includes(kw)),
+  );
+  const answer = models.filter(
+    (name) => !embeddingKeywords.some((kw) => name.toLowerCase().includes(kw)),
+  );
+
+  return { answer, embedding };
+}
+
+async function discoverAnswerModels(provider: ProviderId, ollamaBaseUrl?: string): Promise<string[]> {
   if (provider === "openai") {
     return discoverOpenAIAnswerModels();
   }
+  if (provider === "ollama") {
+    const { answer } = await discoverOllamaModels(ollamaBaseUrl ?? "http://localhost:11434");
+    if (answer.length === 0) {
+      const fallback = PROVIDER_REGISTRY.find((item) => item.provider === "ollama")!;
+      return fallback.answerModels;
+    }
+    return answer;
+  }
   return discoverAzureAnswerDeployments();
+}
+
+async function discoverOllamaEmbeddingModels(baseUrl: string): Promise<string[]> {
+  const { embedding } = await discoverOllamaModels(baseUrl);
+  if (embedding.length === 0) {
+    const fallback = PROVIDER_REGISTRY.find((item) => item.provider === "ollama")!;
+    return fallback.embeddingModels;
+  }
+  return embedding;
 }
 
 async function probeAzureDeploymentCandidates(): Promise<string[]> {
@@ -296,15 +347,31 @@ function likelyAzureDeploymentFallback(): string[] {
   return sortByRecentPriority(AZURE_CANDIDATE_DEPLOYMENTS, RECENT_ANSWER_MODEL_PRIORITY);
 }
 
+async function promptOllamaBaseUrl(): Promise<string> {
+  if (!stdin.isTTY || !stdout.isTTY) {
+    return "http://localhost:11434";
+  }
+
+  return (await input({
+    message: "Ollama base URL",
+    default: "http://localhost:11434",
+  })).trim();
+}
+
 export async function runConfigurePrompt(): Promise<ConfigurePromptResult> {
   if (!stdin.isTTY || !stdout.isTTY) {
     const providerLabel = await fallbackSelect("Select provider:", PROVIDER_REGISTRY.map((item) => item.label));
     const providerEntry = PROVIDER_REGISTRY.find((item) => item.label === providerLabel)!;
     await ensureProviderCredentials(providerEntry.provider);
 
+    let ollamaBaseUrl: string | undefined;
+    if (providerEntry.provider === "ollama") {
+      ollamaBaseUrl = "http://localhost:11434";
+    }
+
     let answerModels: string[];
     try {
-      answerModels = await discoverAnswerModels(providerEntry.provider);
+      answerModels = await discoverAnswerModels(providerEntry.provider, ollamaBaseUrl);
     } catch (error) {
       if (providerEntry.provider !== "azure-openai") {
         throw error;
@@ -325,10 +392,19 @@ export async function runConfigurePrompt(): Promise<ConfigurePromptResult> {
     }
 
     const answerModel = await fallbackSelect("Select answer model:", answerModels);
+
+    let embeddingModel: string | undefined;
+    if (providerEntry.provider === "ollama") {
+      const embeddingModels = await discoverOllamaEmbeddingModels(ollamaBaseUrl!);
+      embeddingModel = await fallbackSelect("Select embedding model:", embeddingModels);
+    }
+
     return {
       provider: providerEntry.provider,
       answerModel,
+      embeddingModel,
       azureDeployment: providerEntry.provider === "azure-openai" ? answerModel : undefined,
+      ollamaBaseUrl,
     };
   }
 
@@ -339,9 +415,15 @@ export async function runConfigurePrompt(): Promise<ConfigurePromptResult> {
 
   await ensureProviderCredentials(provider);
 
+  let ollamaBaseUrl: string | undefined;
+  if (provider === "ollama") {
+    ollamaBaseUrl = await promptOllamaBaseUrl();
+    console.log("Discovering local models...");
+  }
+
   let answerModels: string[];
   try {
-    answerModels = await discoverAnswerModels(provider);
+    answerModels = await discoverAnswerModels(provider, ollamaBaseUrl);
   } catch (error) {
     if (provider !== "azure-openai") {
       throw error;
@@ -366,6 +448,15 @@ export async function runConfigurePrompt(): Promise<ConfigurePromptResult> {
     choices: answerModels.map((model) => ({ name: model, value: model })),
   });
 
+  let embeddingModel: string | undefined;
+  if (provider === "ollama") {
+    const embeddingModels = await discoverOllamaEmbeddingModels(ollamaBaseUrl!);
+    embeddingModel = await select<string>({
+      message: "Select embedding model",
+      choices: embeddingModels.map((model) => ({ name: model, value: model })),
+    });
+  }
+
   const accepted = await confirm({ message: "Confirm selection", default: true });
   if (!accepted) {
     throw new Error("Configuration cancelled");
@@ -374,6 +465,8 @@ export async function runConfigurePrompt(): Promise<ConfigurePromptResult> {
   return {
     provider,
     answerModel,
+    embeddingModel,
     azureDeployment: provider === "azure-openai" ? answerModel : undefined,
+    ollamaBaseUrl,
   };
 }
