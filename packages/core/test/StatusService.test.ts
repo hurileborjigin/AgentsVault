@@ -25,6 +25,7 @@ function createMockVectorStore(): VectorStore {
     upsertChunks: vi.fn(),
     search: vi.fn(),
     deleteByProjectAndPath: vi.fn(),
+    deleteProject: vi.fn(),
     findByProjectAndPath: vi.fn(),
     createIngestionJob: vi.fn(),
     finishIngestionJob: vi.fn(),

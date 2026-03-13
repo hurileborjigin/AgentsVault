@@ -285,11 +285,13 @@ export class SqliteVectorStore implements VectorStore {
       .all(projectId, docPath) as Array<{ id: string }>;
 
     const deleteChunks = this.db.prepare("delete from chunks where document_id = ?");
+    const deleteFts = this.db.prepare("delete from chunks_fts where chunk_id in (select id from chunks where document_id = ?)");
     const deleteDocument = this.db.prepare("delete from documents where id = ?");
 
     this.db.exec("BEGIN");
     try {
       for (const item of rows) {
+        deleteFts.run(item.id);
         deleteChunks.run(item.id);
         deleteDocument.run(item.id);
       }
@@ -298,6 +300,35 @@ export class SqliteVectorStore implements VectorStore {
       this.db.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  async deleteProject(projectId: string): Promise<{ documents: number; chunks: number }> {
+    const stats = await this.getProjectStats(projectId);
+
+    const docIds = this.db
+      .prepare(`select id from documents where project_id = ?`)
+      .all(projectId) as Array<{ id: string }>;
+
+    const deleteChunks = this.db.prepare("delete from chunks where document_id = ?");
+    const deleteFts = this.db.prepare("delete from chunks_fts where chunk_id in (select id from chunks where document_id = ?)");
+    const deleteDocument = this.db.prepare("delete from documents where id = ?");
+    const deleteJobs = this.db.prepare("delete from ingestion_jobs where project_id = ?");
+
+    this.db.exec("BEGIN");
+    try {
+      for (const doc of docIds) {
+        deleteFts.run(doc.id);
+        deleteChunks.run(doc.id);
+        deleteDocument.run(doc.id);
+      }
+      deleteJobs.run(projectId);
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+
+    return { documents: stats.documents, chunks: stats.chunks };
   }
 
   async findByProjectAndPath(projectId: string, docPath: string): Promise<SourceDocument | null> {

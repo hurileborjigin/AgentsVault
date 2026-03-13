@@ -59,9 +59,8 @@ apps/cli  →  @agents-vault/core (services + ports)
 
 ### Storage
 
-- SQLite at `~/.agents-vault/agents-vault.sqlite` — cosine similarity computed in TypeScript (no vector extension)
+- SQLite at `~/.agents-vault/agents-vault.sqlite` — cosine similarity computed in TypeScript (no vector extension), FTS5 for BM25 keyword search
 - Config at `~/.agents-vault/agents-vault.json`, encrypted auth at `~/.agents-vault/auth.json`
-- Optional Supabase backend with pgvector (migrations in `supabase/`)
 
 ### Ingestion Pipeline
 
@@ -73,7 +72,9 @@ FileScanner → ParserFactory (Text/PDF/Image) → DefaultChunker (800-token win
 agents-vault configure          # interactive provider/model setup
 agents-vault ingest             # discover, parse, chunk, embed, persist
 agents-vault ask                # grounded Q&A with citations
+agents-vault list               # list all indexed projects
 agents-vault status             # config + index health
+agents-vault delete <project>   # delete a project and all its data
 agents-vault doctor             # environment diagnostics
 ```
 

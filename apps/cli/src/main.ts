@@ -5,6 +5,8 @@ import { registerIngestCommand } from "./commands/ingest";
 import { registerAskCommand } from "./commands/ask";
 import { registerStatusCommand } from "./commands/status";
 import { registerDoctorCommand } from "./commands/doctor";
+import { registerDeleteCommand } from "./commands/delete";
+import { registerListCommand } from "./commands/list";
 import { createRuntime } from "./runtime";
 
 export function createProgram(cwd: string) {
@@ -34,6 +36,8 @@ ${chalk.bold.cyan("Common Flags:")}
   registerAskCommand(program, runtime.createAskService, runtime.resolvedDefaultProject);
   registerStatusCommand(program, runtime.createStatusService, runtime.resolvedDefaultProject);
   registerDoctorCommand(program, runtime.createDoctorService);
+  registerDeleteCommand(program, runtime.getVectorStore);
+  registerListCommand(program, runtime.createStatusService);
 
   return program;
 }

@@ -31,6 +31,7 @@ export interface VectorStore {
   upsertChunks(chunks: DocumentChunk[]): Promise<void>;
   search(queryEmbedding: number[], opts: SearchOptions): Promise<RetrievedChunk[]>;
   deleteByProjectAndPath(projectId: string, path: string): Promise<void>;
+  deleteProject(projectId: string): Promise<{ documents: number; chunks: number }>;
   findByProjectAndPath(projectId: string, path: string): Promise<SourceDocument | null>;
   createIngestionJob(job: IngestionJob): Promise<void>;
   finishIngestionJob(jobId: string, status: "completed" | "failed", stats: Record<string, unknown>): Promise<void>;

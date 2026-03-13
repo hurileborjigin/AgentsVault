@@ -41,6 +41,7 @@ function createMockVectorStore(chunks: RetrievedChunk[] = [makeChunk()]): Vector
     upsertChunks: vi.fn().mockResolvedValue(undefined),
     search: vi.fn().mockResolvedValue(chunks),
     deleteByProjectAndPath: vi.fn().mockResolvedValue(undefined),
+    deleteProject: vi.fn().mockResolvedValue({ documents: 0, chunks: 0 }),
     findByProjectAndPath: vi.fn().mockResolvedValue(null),
     createIngestionJob: vi.fn().mockResolvedValue(undefined),
     finishIngestionJob: vi.fn().mockResolvedValue(undefined),

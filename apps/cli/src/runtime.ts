@@ -109,6 +109,7 @@ export function createRuntime(cwd: string) {
     createAskService,
     createStatusService,
     createDoctorService,
+    getVectorStore,
     configureService,
     resolvedOutputDir: bootstrapConfig?.outputDir ?? resolveOutputDir(cwd),
     resolvedConfigPath: resolveConfigPath(),
